@@ -18,6 +18,7 @@ using Neuroglia;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Reflection;
 
 namespace Newtonsoft.Json

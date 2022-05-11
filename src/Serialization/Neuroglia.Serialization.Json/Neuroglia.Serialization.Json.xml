@@ -97,6 +97,41 @@
         <member name="M:System.Text.Json.Serialization.DerivedTypeConverterFactory.CreateConverter(System.Type,System.Text.Json.JsonSerializerOptions)">
             <inheritdoc/>
         </member>
+        <member name="T:System.Text.Json.Serialization.DynamicValueConverter">
+            <summary>
+            Represents a <see cref="T:System.Text.Json.Serialization.JsonConverter"/> used to convert objects from/into JSON
+            </summary>
+        </member>
+        <member name="M:System.Text.Json.Serialization.DynamicValueConverter.Read(System.Text.Json.Utf8JsonReader@,System.Type,System.Text.Json.JsonSerializerOptions)">
+            <inheritdoc/>
+        </member>
+        <member name="M:System.Text.Json.Serialization.DynamicValueConverter.ReadObject(System.Text.Json.Utf8JsonReader@,System.Text.Json.JsonSerializerOptions)">
+            <summary>
+            Reads a complex object from the current token
+            </summary>
+            <param name="reader">The <see cref="T:System.Text.Json.Utf8JsonReader"/> used to read the current token</param>
+            <param name="options">The <see cref="T:System.Text.Json.JsonSerializerOptions"/> to use</param>
+            <returns>The object that has been read</returns>
+        </member>
+        <member name="M:System.Text.Json.Serialization.DynamicValueConverter.ReadArray(System.Text.Json.Utf8JsonReader@,System.Text.Json.JsonSerializerOptions)">
+            <summary>
+            Reads an array from the current token
+            </summary>
+            <param name="reader">The <see cref="T:System.Text.Json.Utf8JsonReader"/> used to read the current token</param>
+            <param name="options">The <see cref="T:System.Text.Json.JsonSerializerOptions"/> to use</param>
+            <returns>The array that has been read</returns>
+        </member>
+        <member name="M:System.Text.Json.Serialization.DynamicValueConverter.ReadValue(System.Text.Json.Utf8JsonReader@,System.Text.Json.JsonSerializerOptions)">
+            <summary>
+            Reads a primitive value from the current token
+            </summary>
+            <param name="reader">The <see cref="T:System.Text.Json.Utf8JsonReader"/> used to read the current token</param>
+            <param name="options">The <see cref="T:System.Text.Json.JsonSerializerOptions"/> to use</param>
+            <returns>The primitive value that has been read</returns>
+        </member>
+        <member name="M:System.Text.Json.Serialization.DynamicValueConverter.Write(System.Text.Json.Utf8JsonWriter,System.Object,System.Text.Json.JsonSerializerOptions)">
+            <inheritdoc/>
+        </member>
         <member name="T:System.Text.Json.Serialization.StringEnumConverter`1">
             <summary>
             Represents the <see cref="T:System.Text.Json.Serialization.JsonConverter`1"/> used to convert from and to <see cref="T:System.Enum"/>s

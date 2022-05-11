@@ -44,6 +44,35 @@
         <member name="M:Newtonsoft.Json.AbstractClassConverterFactory.WriteJson(Newtonsoft.Json.JsonWriter,System.Object,Newtonsoft.Json.JsonSerializer)">
             <inheritdoc/>
         </member>
+        <member name="T:Newtonsoft.Json.DynamicValueConverter">
+            <summary>
+            Represents a <see cref="T:Newtonsoft.Json.JsonConverter"/> used to deserialize dynamic values
+            </summary>
+        </member>
+        <member name="P:Newtonsoft.Json.DynamicValueConverter.CanWrite">
+            <inheritdoc/>
+        </member>
+        <member name="M:Newtonsoft.Json.DynamicValueConverter.CanConvert(System.Type)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Newtonsoft.Json.DynamicValueConverter.ReadJson(Newtonsoft.Json.JsonReader,System.Type,System.Object,Newtonsoft.Json.JsonSerializer)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Newtonsoft.Json.DynamicValueConverter.WriteJson(Newtonsoft.Json.JsonWriter,System.Object,Newtonsoft.Json.JsonSerializer)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Newtonsoft.Json.JTokenExtensions">
+            <summary>
+            Defines extensions for <see cref="T:Newtonsoft.Json.Linq.JToken"/>s
+            </summary>
+        </member>
+        <member name="M:Newtonsoft.Json.JTokenExtensions.ToObject(Newtonsoft.Json.Linq.JToken)">
+            <summary>
+            Converts the specified <see cref="T:Newtonsoft.Json.Linq.JToken"/> into a new object
+            </summary>
+            <param name="token">The <see cref="T:Newtonsoft.Json.Linq.JToken"/> to convert</param>
+            <returns>The converted object</returns>
+        </member>
         <member name="T:Newtonsoft.Json.Serialization.NonPublicSetterContractResolver">
             <summary>
             Represents an <see cref="T:Newtonsoft.Json.Serialization.IContractResolver"/> used to resolve properties with non-public setters
