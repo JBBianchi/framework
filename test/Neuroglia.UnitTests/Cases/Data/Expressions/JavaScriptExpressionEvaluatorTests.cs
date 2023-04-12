@@ -11,6 +11,10 @@ using Xunit;
 
 namespace Neuroglia.UnitTests.Cases.Data.Expressions
 {
+    internal class DataHolder
+    {
+        public int Value { get; set; }
+    }
 
     public class JavaScriptExpressionEvaluatorTests
     {
@@ -265,6 +269,23 @@ namespace Neuroglia.UnitTests.Cases.Data.Expressions
 
             //assert
             result.Should().Be(@"bar is ""bar""");
+        }
+
+        [Fact]
+        public void Evaluate_ShouldNotMutate()
+        {
+            //arrange
+            var evaluator = BuildExpressionEvaluatorWithSystemTextJsonSerializer();
+            var value = 42;
+            var data = new DataHolder { Value = value };
+            var expression = "input.Value = 24; input.Value";
+
+            //act
+            var result = evaluator.Evaluate<int>(expression, data);
+
+            //assert
+            data.Should().BeEquivalentTo(new { Value = 42 });
+            result.Should().Be(24);
         }
 
         static IExpressionEvaluator BuildExpressionEvaluatorWithNewtonsoftJsonSerializer()

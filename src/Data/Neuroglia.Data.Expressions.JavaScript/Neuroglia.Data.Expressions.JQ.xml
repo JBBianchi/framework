@@ -99,6 +99,15 @@
         <member name="M:Neuroglia.Data.Expressions.JavaScript.JavaScriptExpressionEvaluator.Evaluate(System.String,System.Object,System.Type,System.Collections.Generic.IDictionary{System.String,System.Object})">
             <inheritdoc/>
         </member>
+        <member name="M:Neuroglia.Data.Expressions.JavaScript.JavaScriptExpressionEvaluator.CopyValue(Jint.Engine,System.String,System.Object)">
+            <summary>
+            Copies the provided value to a variable inside the engine under the provided name. 
+            It prevents the JS engine from being able to mutate the inputed value out of its execution context.
+            </summary>
+            <param name="engine">The instance of <see cref="T:Jint.Engine"/> to set the variable in</param>
+            <param name="name">The name of the variable</param>
+            <param name="value">The value of the variable</param>
+        </member>
         <member name="M:Neuroglia.Data.Expressions.JavaScript.JavaScriptExpressionEvaluator.Evaluate``1(System.String,System.Object,System.Collections.Generic.IDictionary{System.String,System.Object})">
             <inheritdoc/>
         </member>

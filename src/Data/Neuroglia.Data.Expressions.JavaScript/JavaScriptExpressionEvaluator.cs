@@ -76,8 +76,8 @@ namespace Neuroglia.Data.Expressions.JavaScript
             if (string.IsNullOrWhiteSpace(expression)) throw new ArgumentNullException(nameof(expression));
             var jsEngine = new Engine(options =>
                 {
-                    // Limit memory allocations to 1MB
-                    options.LimitMemory(1_000_000)
+                    // Limit memory allocations to 10MB
+                    options.LimitMemory(10_000_000)
                         // Set a timeout to 500ms
                         .TimeoutInterval(TimeSpan.FromMilliseconds(500))
                         // Set limit of 500 executed statements
@@ -98,18 +98,36 @@ namespace Neuroglia.Data.Expressions.JavaScript
                         })
                     ;
                 });;
-            jsEngine.SetValue("input", data);
+            this.CopyValue(jsEngine, "input", data);
             if (args != null)
             {
                 foreach (var argument in args)
                 {
-                    jsEngine.SetValue(argument.Key, argument.Value);
+                    this.CopyValue(jsEngine, argument.Key, argument.Value);
                 }
             }
             var result = jsEngine.Evaluate(expression).UnwrapIfPromise().ToObject();
             if (expectedType == typeof(object))
                 return result;
             return this.JsonSerializer.Deserialize(this.JsonSerializer.Serialize(result), expectedType);
+        }
+
+
+        /// <summary>
+        /// Copies the provided value to a variable inside the engine under the provided name. 
+        /// It prevents the JS engine from being able to mutate the inputed value out of its execution context.
+        /// </summary>
+        /// <param name="engine">The instance of <see cref="Engine"/> to set the variable in</param>
+        /// <param name="name">The name of the variable</param>
+        /// <param name="value">The value of the variable</param>
+        private void CopyValue(Engine engine, string name, object value)
+        {
+            if (value == null || value.GetType().IsPrimitive)
+            {
+                engine.SetValue(name, value);
+            }
+            engine.SetValue($"__{name}__buffer", value);
+            engine.Execute($"const {name} = JSON.parse(JSON.stringify(__{name}__buffer)); delete __{name}__buffer;");
         }
 
         /// <inheritdoc/>
