@@ -4,14 +4,13 @@
     <TargetFramework>net7.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-	<RootNamespace>$(MSBuildProjectName.Replace(" ", "_").Replace(".Memory", ""))</RootNamespace>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
 	<Company>Neuroglia SRL</Company>
     <Copyright>Copyright © 2021-Present Neuroglia SRL. All rights reserved.</Copyright>
     <Authors>Neuroglia SRL</Authors>
     <RepositoryUrl>https://github.com/neuroglia-io/framework</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-	<PackageTags>neuroglia framework data infrastructure event-sourcing es memory</PackageTags>
+	<PackageTags>neuroglia framework data infrastructure event-sourcing es event-store</PackageTags>
     <Version>3.4.0</Version>
     <NeutralLanguage>en</NeutralLanguage>
 	<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
@@ -29,14 +28,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="7.0.0" />
-    <PackageReference Include="System.Reactive" Version="6.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="7.0.13" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Neuroglia.Data.Infrastructure.EventSourcing\Neuroglia.Data.Infrastructure.EventSourcing.csproj" />
-    <ProjectReference Include="..\Neuroglia.Plugins.Abstractions\Neuroglia.Plugins.Abstractions.csproj" />
-    <ProjectReference Include="..\Neuroglia.Reactive\Neuroglia.Reactive.csproj" />
-  </ItemGroup>
+  </ItemGroup>	
 
 </Project>

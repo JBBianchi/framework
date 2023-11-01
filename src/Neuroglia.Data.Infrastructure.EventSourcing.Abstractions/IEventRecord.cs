@@ -30,7 +30,7 @@ public interface IEventRecord
     string Id { get; }
 
     /// <summary>
-    /// Gets the offset of the recorded event
+    /// Gets the offset of the recorded event in the stream it belongs to
     /// </summary>
     ulong Offset { get; }
 

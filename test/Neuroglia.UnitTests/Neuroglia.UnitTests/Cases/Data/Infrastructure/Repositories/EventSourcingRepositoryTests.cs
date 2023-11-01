@@ -13,7 +13,6 @@
 
 using Microsoft.Extensions.DependencyInjection;
 using Neuroglia.Data.Infrastructure.EventSourcing;
-using Neuroglia.Data.Infrastructure.EventSourcing.Memory;
 using Neuroglia.Mediation;
 using Neuroglia.Serialization;
 

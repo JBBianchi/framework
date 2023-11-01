@@ -14,7 +14,7 @@
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
-namespace Neuroglia.Data.Infrastructure.EventSourcing.DistributedCache.Services;
+namespace Neuroglia.Data.Infrastructure.EventSourcing.Services;
 
 /// <summary>
 /// Represents the service used to create <see cref="MemoryEventStore"/>s

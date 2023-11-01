@@ -12,10 +12,9 @@
 // limitations under the License.
 
 using Microsoft.Extensions.DependencyInjection;
-using Neuroglia.Data.Infrastructure.EventSourcing.DistributedCache.Services;
 using Neuroglia.Data.Infrastructure.EventSourcing.Services;
 
-namespace Neuroglia.Data.Infrastructure.EventSourcing.Memory;
+namespace Neuroglia.Data.Infrastructure.EventSourcing;
 
 /// <summary>
 /// Defines extensions for <see cref="IServiceCollection"/>s

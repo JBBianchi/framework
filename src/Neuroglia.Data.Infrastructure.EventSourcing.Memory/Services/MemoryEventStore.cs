@@ -22,7 +22,7 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
 
-namespace Neuroglia.Data.Infrastructure.EventSourcing.DistributedCache.Services;
+namespace Neuroglia.Data.Infrastructure.EventSourcing.Services;
 
 /// <summary>
 /// Represents an <see cref="IEventStore"/> implementation relying on an <see cref="IMemoryCache"/>

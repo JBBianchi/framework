@@ -15,14 +15,13 @@ using EventStore.Client;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Neuroglia.Data.Infrastructure.EventSourcing.Configuration;
-using Neuroglia.Data.Infrastructure.EventSourcing.Services;
 using Neuroglia.Serialization;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
 using ESStreamPosition = EventStore.Client.StreamPosition;
 
-namespace Neuroglia.Data.Infrastructure.EventSourcing;
+namespace Neuroglia.Data.Infrastructure.EventSourcing.Services;
 
 /// <summary>
 /// Represents the default <see href="https://www.eventstore.com/">Event Store</see> implementation of the <see cref="IEventStore"/> interface
@@ -42,12 +41,12 @@ public class ESEventStore
     /// <param name="eventStorePersistentSubscriptionsClient">The service used to interact with the remove <see href="https://www.eventstore.com/">Event Store</see> service, exclusively for persistent subscriptions</param>
     public ESEventStore(IServiceProvider serviceProvider, ILogger<ESEventStore> logger, IOptions<EventStoreOptions> options, ISerializerProvider serializerProvider, EventStoreClient eventStoreClient, EventStorePersistentSubscriptionsClient eventStorePersistentSubscriptionsClient)
     {
-        this.ServiceProvider = serviceProvider;
-        this.Logger = logger;
-        this.Options = options.Value;
-        this.Serializer = serializerProvider.GetSerializers().First(s => this.Options.SerializerType == null || s.GetType() == this.Options.SerializerType);
-        this.EventStoreClient = eventStoreClient;
-        this.EventStorePersistentSubscriptionsClient = eventStorePersistentSubscriptionsClient;
+        ServiceProvider = serviceProvider;
+        Logger = logger;
+        Options = options.Value;
+        Serializer = serializerProvider.GetSerializers().First(s => Options.SerializerType == null || s.GetType() == Options.SerializerType);
+        EventStoreClient = eventStoreClient;
+        EventStorePersistentSubscriptionsClient = eventStorePersistentSubscriptionsClient;
     }
 
     /// <summary>
@@ -84,7 +83,7 @@ public class ESEventStore
     public virtual async Task<bool> StreamExistsAsync(string streamId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(streamId)) throw new ArgumentNullException(nameof(streamId));
-        return (await this.GetAsync(streamId, cancellationToken).ConfigureAwait(false)) != null;
+        return await GetAsync(streamId, cancellationToken).ConfigureAwait(false) != null;
     }
 
     /// <inheritdoc/>
@@ -92,11 +91,11 @@ public class ESEventStore
     {
         if (string.IsNullOrWhiteSpace(streamId)) throw new ArgumentNullException(nameof(streamId));
 
-        var streamMetadataResult = await this.EventStoreClient.GetStreamMetadataAsync(streamId, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var streamMetadataResult = await EventStoreClient.GetStreamMetadataAsync(streamId, cancellationToken: cancellationToken).ConfigureAwait(false);
         if (streamMetadataResult.StreamDeleted) throw new StreamNotFoundException(streamId);
         var offset = streamMetadataResult.Metadata.TruncateBefore ?? StreamPosition.StartOfStream;
 
-        var readResult = this.EventStoreClient.ReadStreamAsync(Direction.Forwards, streamId, offset, 1, cancellationToken: cancellationToken);
+        var readResult = EventStoreClient.ReadStreamAsync(Direction.Forwards, streamId, offset, 1, cancellationToken: cancellationToken);
         ReadState? readState;
 
         try { readState = await readResult.ReadState.ConfigureAwait(false); }
@@ -104,7 +103,7 @@ public class ESEventStore
         if (readState == ReadState.StreamNotFound) throw new StreamNotFoundException(streamId);
 
         var firstEvent = await readResult.FirstAsync(cancellationToken).ConfigureAwait(false);
-        readResult = this.EventStoreClient.ReadStreamAsync(Direction.Backwards, streamId, ESStreamPosition.End, 1, cancellationToken: cancellationToken);
+        readResult = EventStoreClient.ReadStreamAsync(Direction.Backwards, streamId, ESStreamPosition.End, 1, cancellationToken: cancellationToken);
         var lastEvent = await readResult.FirstAsync(cancellationToken).ConfigureAwait(false);
 
         return new EventStreamDescriptor(streamId, lastEvent.Event.EventNumber.ToInt64() + 1 - offset.ToInt64(), firstEvent.Event.Created, lastEvent.Event.Created);
@@ -117,26 +116,26 @@ public class ESEventStore
         if (events == null || !events.Any()) throw new ArgumentNullException(nameof(events));
         if (expectedVersion < StreamPosition.EndOfStream) throw new ArgumentOutOfRangeException(nameof(expectedVersion));
 
-        var readResult = this.EventStoreClient.ReadStreamAsync(Direction.Backwards, streamId, ESStreamPosition.End, 1, cancellationToken: cancellationToken);
+        var readResult = EventStoreClient.ReadStreamAsync(Direction.Backwards, streamId, ESStreamPosition.End, 1, cancellationToken: cancellationToken);
         var shouldThrowIfNotExists = expectedVersion.HasValue && expectedVersion != StreamPosition.StartOfStream && expectedVersion != StreamPosition.EndOfStream;
         try { if (await readResult.ReadState.ConfigureAwait(false) == ReadState.StreamNotFound && shouldThrowIfNotExists) throw new OptimisticConcurrencyException(expectedVersion, null); }
-        catch (StreamDeletedException) { if(shouldThrowIfNotExists) throw new OptimisticConcurrencyException(expectedVersion, null); }
+        catch (StreamDeletedException) { if (shouldThrowIfNotExists) throw new OptimisticConcurrencyException(expectedVersion, null); }
 
-        var eventsData = events.Select(e => 
+        var eventsData = events.Select(e =>
         {
             var metadata = e.Metadata ?? new Dictionary<string, object>();
             metadata[EventRecordMetadata.ClrTypeName] = e.Data?.GetType().AssemblyQualifiedName!;
-            return new EventData(Uuid.NewUuid(), e.Type, this.Serializer.SerializeToByteArray(e.Data), this.Serializer.SerializeToByteArray(metadata));
+            return new EventData(Uuid.NewUuid(), e.Type, Serializer.SerializeToByteArray(e.Data), Serializer.SerializeToByteArray(metadata));
         });
-        if (expectedVersion.HasValue) await this.EventStoreClient.AppendToStreamAsync(streamId, StreamRevision.FromInt64(expectedVersion.Value), eventsData, cancellationToken: cancellationToken).ConfigureAwait(false);
-        else await this.EventStoreClient.AppendToStreamAsync(streamId, StreamState.Any, eventsData, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (expectedVersion.HasValue) await EventStoreClient.AppendToStreamAsync(streamId, StreamRevision.FromInt64(expectedVersion.Value), eventsData, cancellationToken: cancellationToken).ConfigureAwait(false);
+        else await EventStoreClient.AppendToStreamAsync(streamId, StreamState.Any, eventsData, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
     public virtual IAsyncEnumerable<IEventRecord> ReadAsync(string? streamId, StreamReadDirection readDirection, long offset, ulong? length = null, CancellationToken cancellationToken = default)
     {
-        if(string.IsNullOrWhiteSpace(streamId)) return this.ReadFromAllAsync(readDirection, offset, length, cancellationToken);
-        else return this.ReadFromStreamAsync(streamId, readDirection, offset, length, cancellationToken);
+        if (string.IsNullOrWhiteSpace(streamId)) return ReadFromAllAsync(readDirection, offset, length, cancellationToken);
+        else return ReadFromStreamAsync(streamId, readDirection, offset, length, cancellationToken);
     }
 
     /// <summary>
@@ -160,18 +159,18 @@ public class ESEventStore
             _ => throw new NotSupportedException($"The specified {nameof(StreamReadDirection)} '{readDirection}' is not supported")
         };
 
-        var streamMetadataResult = await this.EventStoreClient.GetStreamMetadataAsync(streamId, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var streamMetadataResult = await EventStoreClient.GetStreamMetadataAsync(streamId, cancellationToken: cancellationToken).ConfigureAwait(false);
         if (streamMetadataResult.StreamDeleted) throw new StreamNotFoundException(streamId);
         if (streamMetadataResult.Metadata.TruncateBefore.HasValue && offset != StreamPosition.EndOfStream && offset < streamMetadataResult.Metadata.TruncateBefore.Value.ToInt64()) offset = streamMetadataResult.Metadata.TruncateBefore.Value.ToInt64();
 
         if (readDirection == StreamReadDirection.Forwards && offset == StreamPosition.EndOfStream) yield break;
         else if (readDirection == StreamReadDirection.Backwards && offset == StreamPosition.StartOfStream) yield break;
 
-        var readResult = this.EventStoreClient.ReadStreamAsync(direction, streamId, ESStreamPosition.FromInt64(offset), length.HasValue ? (long)length.Value : long.MaxValue, cancellationToken: cancellationToken);
+        var readResult = EventStoreClient.ReadStreamAsync(direction, streamId, ESStreamPosition.FromInt64(offset), length.HasValue ? (long)length.Value : long.MaxValue, cancellationToken: cancellationToken);
         try { if (await readResult.ReadState.ConfigureAwait(false) == ReadState.StreamNotFound) throw new StreamNotFoundException(streamId); }
         catch (StreamDeletedException) { throw new StreamNotFoundException(streamId); }
 
-        await foreach (var e in readResult) yield return this.DeserializeEventRecord(e);
+        await foreach (var e in readResult) yield return DeserializeEventRecord(e);
     }
 
     /// <summary>
@@ -184,6 +183,9 @@ public class ESEventStore
     /// <returns>A new <see cref="IAsyncEnumerable{T}"/> containing the events read from the store</returns>
     protected virtual async IAsyncEnumerable<IEventRecord> ReadFromAllAsync(StreamReadDirection readDirection, long offset, ulong? length = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        if (offset < StreamPosition.EndOfStream) throw new ArgumentOutOfRangeException(nameof(offset));
+        if (length.HasValue && length == 0) yield break;
+
         var direction = readDirection switch
         {
             StreamReadDirection.Backwards => Direction.Backwards,
@@ -200,11 +202,11 @@ public class ESEventStore
             StreamPosition.EndOfStream => Position.End,
             _ => readDirection == StreamReadDirection.Backwards ? Position.End : Position.Start
         };
-        var events = this.EventStoreClient.ReadAllAsync(direction, position, length.HasValue ? (long)length.Value : long.MaxValue, cancellationToken: cancellationToken);
+        var events = EventStoreClient.ReadAllAsync(direction, position, length.HasValue ? (long)length.Value : long.MaxValue, cancellationToken: cancellationToken);
         var streamOffset = 0;
         await foreach (var e in events.Where(e => !e.Event.EventType.StartsWith("$")))
         {
-            if (readDirection == StreamReadDirection.Forwards ? streamOffset >= offset : streamOffset < (offset == StreamPosition.EndOfStream ? int.MaxValue : offset + 1)) yield return this.DeserializeEventRecord(e);
+            if (readDirection == StreamReadDirection.Forwards ? streamOffset >= offset : streamOffset < (offset == StreamPosition.EndOfStream ? int.MaxValue : offset + 1)) yield return DeserializeEventRecord(e);
             streamOffset++;
         }
     }
@@ -212,8 +214,8 @@ public class ESEventStore
     /// <inheritdoc/>
     public virtual Task<IObservable<IEventRecord>> SubscribeAsync(string? streamId, long offset = StreamPosition.EndOfStream, string? consumerGroup = null, CancellationToken cancellationToken = default)
     {
-        if(string.IsNullOrWhiteSpace(streamId)) return this.SubscribeToAllAsync(offset, consumerGroup, cancellationToken);
-        else return this.SubscribeToStreamAsync(streamId, offset, consumerGroup, cancellationToken);
+        if (string.IsNullOrWhiteSpace(streamId)) return SubscribeToAllAsync(offset, consumerGroup, cancellationToken);
+        else return SubscribeToStreamAsync(streamId, offset, consumerGroup, cancellationToken);
     }
 
     /// <summary>
@@ -228,16 +230,16 @@ public class ESEventStore
     {
         if (string.IsNullOrWhiteSpace(streamId)) throw new ArgumentNullException(nameof(streamId));
         if (offset < StreamPosition.EndOfStream) throw new ArgumentOutOfRangeException(nameof(offset));
-        if (!await this.StreamExistsAsync(streamId, cancellationToken).ConfigureAwait(false)) throw new StreamNotFoundException(streamId);
+        if (!await StreamExistsAsync(streamId, cancellationToken).ConfigureAwait(false)) throw new StreamNotFoundException(streamId);
 
         var subject = new Subject<IEventRecord>();
         if (string.IsNullOrWhiteSpace(consumerGroup))
         {
             var position = offset == StreamPosition.EndOfStream ? FromStream.End : FromStream.After(ESStreamPosition.FromInt64(offset));
             var records = new List<IEventRecord>();
-            if (position != FromStream.End) records = await this.ReadAsync(streamId, StreamReadDirection.Forwards, offset, cancellationToken: cancellationToken).ToListAsync(cancellationToken).ConfigureAwait(false);
-            var subscription = await this.EventStoreClient.SubscribeToStreamAsync(streamId, FromStream.End, (sub, e, token) => this.OnEventConsumedAsync(subject, sub, e, token), cancellationToken: cancellationToken).ConfigureAwait(false);
-            return Observable.StartWith(Observable.Using(() => subscription, watch => subject), records);
+            if (position != FromStream.End) records = await ReadAsync(streamId, StreamReadDirection.Forwards, offset, cancellationToken: cancellationToken).ToListAsync(cancellationToken).ConfigureAwait(false);
+            var subscription = await EventStoreClient.SubscribeToStreamAsync(streamId, FromStream.End, (sub, e, token) => OnEventConsumedAsync(subject, sub, e, token), cancellationToken: cancellationToken).ConfigureAwait(false);
+            return Observable.Using(() => subscription, watch => subject).StartWith(records);
         }
         else
         {
@@ -245,13 +247,13 @@ public class ESEventStore
             var settings = new PersistentSubscriptionSettings(true, position);
             try
             {
-                await this.EventStorePersistentSubscriptionsClient.CreateToStreamAsync(streamId, consumerGroup, settings, cancellationToken: cancellationToken).ConfigureAwait(false);
+                await EventStorePersistentSubscriptionsClient.CreateToStreamAsync(streamId, consumerGroup, settings, cancellationToken: cancellationToken).ConfigureAwait(false);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
 
             }
-            var persistentSubscription = await this.EventStorePersistentSubscriptionsClient.SubscribeToStreamAsync(streamId, consumerGroup, (sub, e, retry, token) => this.OnEventConsumedAsync(subject, sub, e, retry, token), cancellationToken: cancellationToken).ConfigureAwait(false);
+            var persistentSubscription = await EventStorePersistentSubscriptionsClient.SubscribeToStreamAsync(streamId, consumerGroup, (sub, e, retry, token) => OnEventConsumedAsync(subject, sub, e, retry, token), cancellationToken: cancellationToken).ConfigureAwait(false);
             return Observable.Using(() => persistentSubscription, watch => subject);
         }
     }
@@ -272,10 +274,10 @@ public class ESEventStore
         {
             var position = offset == StreamPosition.EndOfStream ? FromAll.End : FromAll.Start;
             var filterOptions = new SubscriptionFilterOptions(EventTypeFilter.ExcludeSystemEvents());
-            var subscription = await this.EventStoreClient.SubscribeToAllAsync(position, (sub, e, token) => this.OnEventConsumedAsync(subject, sub, e, token), filterOptions: filterOptions, cancellationToken: cancellationToken).ConfigureAwait(false);
+            var subscription = await EventStoreClient.SubscribeToAllAsync(position, (sub, e, token) => OnEventConsumedAsync(subject, sub, e, token), filterOptions: filterOptions, cancellationToken: cancellationToken).ConfigureAwait(false);
             var observable = Observable.Using(() => subscription, _ => subject);
             var streamOffset = 0;
-            if (offset != StreamPosition.StartOfStream && offset != StreamPosition.EndOfStream) observable = observable.SkipWhile(e => 
+            if (offset != StreamPosition.StartOfStream && offset != StreamPosition.EndOfStream) observable = observable.SkipWhile(e =>
             {
                 var skip = streamOffset < offset;
                 streamOffset++;
@@ -290,13 +292,13 @@ public class ESEventStore
             var settings = new PersistentSubscriptionSettings(true, position);
             try
             {
-                await this.EventStorePersistentSubscriptionsClient.CreateToAllAsync(consumerGroup, filter, settings, cancellationToken: cancellationToken).ConfigureAwait(false);
+                await EventStorePersistentSubscriptionsClient.CreateToAllAsync(consumerGroup, filter, settings, cancellationToken: cancellationToken).ConfigureAwait(false);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
 
             }
-            var persistentSubscription = await this.EventStorePersistentSubscriptionsClient.SubscribeToAllAsync(consumerGroup, (sub, e, retry, token) => this.OnEventConsumedAsync(subject, sub, e, retry, token), cancellationToken: cancellationToken);
+            var persistentSubscription = await EventStorePersistentSubscriptionsClient.SubscribeToAllAsync(consumerGroup, (sub, e, retry, token) => OnEventConsumedAsync(subject, sub, e, retry, token), cancellationToken: cancellationToken);
             return Observable.Using(() => persistentSubscription, watch => subject);
         }
     }
@@ -309,27 +311,27 @@ public class ESEventStore
 
         var position = offset == StreamPosition.EndOfStream ? ESStreamPosition.End : ESStreamPosition.FromInt64(offset);
         var settings = new PersistentSubscriptionSettings(true, position);
-        if(string.IsNullOrWhiteSpace(streamId)) await this.EventStorePersistentSubscriptionsClient.UpdateToAllAsync(consumerGroup, settings, cancellationToken: cancellationToken).ConfigureAwait(false);
-        else await this.EventStorePersistentSubscriptionsClient.UpdateToStreamAsync(streamId, consumerGroup, settings, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(streamId)) await EventStorePersistentSubscriptionsClient.UpdateToAllAsync(consumerGroup, settings, cancellationToken: cancellationToken).ConfigureAwait(false);
+        else await EventStorePersistentSubscriptionsClient.UpdateToStreamAsync(streamId, consumerGroup, settings, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
     public virtual async Task TruncateAsync(string streamId, ulong? beforeVersion = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(streamId)) throw new ArgumentNullException(nameof(streamId));
-        if (!await this.StreamExistsAsync(streamId, cancellationToken).ConfigureAwait(false)) throw new StreamNotFoundException(streamId);
+        if (!await StreamExistsAsync(streamId, cancellationToken).ConfigureAwait(false)) throw new StreamNotFoundException(streamId);
 
         var truncateBefore = beforeVersion.HasValue ? ESStreamPosition.FromInt64((long)beforeVersion.Value) : ESStreamPosition.End;
-        await this.EventStoreClient.SetStreamMetadataAsync(streamId, StreamState.Any, new StreamMetadata(truncateBefore: truncateBefore), cancellationToken: cancellationToken).ConfigureAwait(false);
+        await EventStoreClient.SetStreamMetadataAsync(streamId, StreamState.Any, new StreamMetadata(truncateBefore: truncateBefore), cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
     public virtual async Task DeleteAsync(string streamId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(streamId)) throw new ArgumentNullException(nameof(streamId));
-        if (!await this.StreamExistsAsync(streamId, cancellationToken).ConfigureAwait(false)) throw new StreamNotFoundException(streamId);
+        if (!await StreamExistsAsync(streamId, cancellationToken).ConfigureAwait(false)) throw new StreamNotFoundException(streamId);
 
-        await this.EventStoreClient.DeleteAsync(streamId, StreamState.Any, cancellationToken: cancellationToken).ConfigureAwait(false);
+        await EventStoreClient.DeleteAsync(streamId, StreamState.Any, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -340,10 +342,10 @@ public class ESEventStore
     /// <returns>The deserialized <see cref="IEventRecord"/></returns>
     protected virtual IEventRecord DeserializeEventRecord(ResolvedEvent e, PersistentSubscription? subscription = null)
     {
-        var metadata = this.Serializer.Deserialize<IDictionary<string, object>>(e.Event.Metadata.ToArray());
+        var metadata = Serializer.Deserialize<IDictionary<string, object>>(e.Event.Metadata.ToArray());
         var clrTypeName = metadata![EventRecordMetadata.ClrTypeName].ToString()!;
         var clrType = Type.GetType(clrTypeName) ?? throw new Exception();
-        var data = this.Serializer.Deserialize(e.Event.Data.ToArray(), clrType);
+        var data = Serializer.Deserialize(e.Event.Data.ToArray(), clrType);
         metadata.Remove(EventRecordMetadata.ClrTypeName);
         if (!metadata.Any()) metadata = null;
         if (subscription == null) return new EventRecord(e.OriginalStreamId, e.Event.EventId.ToString(), e.Event.EventNumber.ToUInt64(), e.Event.Created, e.Event.EventType, data, metadata);
@@ -358,7 +360,7 @@ public class ESEventStore
     /// <param name="e">The <see cref="ResolvedEvent"/> to handle</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken"/></param>
     /// <returns>A new awaitable <see cref="Task"/></returns>
-    protected virtual Task OnEventConsumedAsync(ISubject<IEventRecord> subject, StreamSubscription subscription, ResolvedEvent e, CancellationToken cancellationToken) => Task.Run(() => subject.OnNext(this.DeserializeEventRecord(e)), cancellationToken);
+    protected virtual Task OnEventConsumedAsync(ISubject<IEventRecord> subject, StreamSubscription subscription, ResolvedEvent e, CancellationToken cancellationToken) => Task.Run(() => subject.OnNext(DeserializeEventRecord(e)), cancellationToken);
 
     /// <summary>
     /// Handles the consumption of a <see cref="ResolvedEvent"/> on a <see cref="PersistentSubscription"/>
@@ -369,7 +371,7 @@ public class ESEventStore
     /// <param name="retryCount">The retry count, if any</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken"/></param>
     /// <returns>A new awaitable <see cref="Task"/></returns>
-    protected virtual Task OnEventConsumedAsync(ISubject<IEventRecord> subject, PersistentSubscription subscription, ResolvedEvent e, int? retryCount, CancellationToken cancellationToken) => Task.Run(() => subject.OnNext(this.DeserializeEventRecord(e, subscription)), cancellationToken);
+    protected virtual Task OnEventConsumedAsync(ISubject<IEventRecord> subject, PersistentSubscription subscription, ResolvedEvent e, int? retryCount, CancellationToken cancellationToken) => Task.Run(() => subject.OnNext(DeserializeEventRecord(e, subscription)), cancellationToken);
 
     /// <summary>
     /// Exposes constants about event related metadata used by the <see cref="ESEventStore"/>

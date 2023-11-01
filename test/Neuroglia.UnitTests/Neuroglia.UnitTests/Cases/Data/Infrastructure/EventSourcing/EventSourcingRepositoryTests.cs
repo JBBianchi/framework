@@ -12,13 +12,12 @@
 // limitations under the License.
 
 using Microsoft.Extensions.DependencyInjection;
-using Neuroglia.Data.Infrastructure.EventSourcing.Memory;
 using Neuroglia.Data.Infrastructure.EventSourcing;
 using Neuroglia.Data.Infrastructure.EventSourcing.Services;
 using Neuroglia.Mapping;
 using Neuroglia.Mediation;
-using Neuroglia.UnitTests.Data.Events;
 using Neuroglia.Serialization;
+using Neuroglia.UnitTests.Data.Events;
 
 namespace Neuroglia.UnitTests.Cases.Data.Infrastructure.EventSourcing;
 

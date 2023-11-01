@@ -11,21 +11,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Neuroglia.Data.Infrastructure.EventSourcing;
+using Neuroglia.Data.Infrastructure.EventSourcing.Services;
+using Neuroglia.Serialization;
+using Neuroglia.UnitTests.Containers;
 
 namespace Neuroglia.UnitTests.Cases.Data.Infrastructure.EventSourcing.EventStores;
 
-public class MemoryEventStoreTests
+public class EntityFrameworkEventStoreTests
     : EventStoreTestsBase
 {
 
-    public MemoryEventStoreTests() : base(BuildServices()) { }
+    public EntityFrameworkEventStoreTests() : base(BuildServices()) { }
 
     public static IServiceCollection BuildServices()
     {
         var services = new ServiceCollection();
-        services.AddMemoryEventStore(_ => { });
+        services.AddLogging();
+        services.AddSerialization();
+        services.AddSingleton(EventStoreContainerBuilder.Build());
+        services.AddDbContext<EventSourcingDbContext>((provider, context) => context.UseInMemoryDatabase("test"));
+        services.AddEntityFrameworkEventStore();
         return services;
     }
 

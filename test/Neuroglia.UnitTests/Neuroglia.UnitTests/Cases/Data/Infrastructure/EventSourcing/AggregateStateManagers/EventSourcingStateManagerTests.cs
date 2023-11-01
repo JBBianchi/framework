@@ -12,8 +12,8 @@
 // limitations under the License.
 
 using Microsoft.Extensions.DependencyInjection;
+using Neuroglia.Data.Infrastructure.EventSourcing;
 using Neuroglia.Data.Infrastructure.EventSourcing.Configuration;
-using Neuroglia.Data.Infrastructure.EventSourcing.Memory;
 using Neuroglia.Data.Infrastructure.EventSourcing.Services;
 using Neuroglia.Serialization;
 
