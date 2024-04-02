@@ -31,7 +31,7 @@ jobs:
         run: dotnet restore "${{ env.SOLUTION }}"
 
       - name: Build solution
-        run: dotnet build "${{ env.SOLUTION }}" --configuration Release --no-restore
+        run: dotnet build "${{ env.SOLUTION }}" --configuration Debug --no-restore
 
       # # Run every tests
       # - name: Test
